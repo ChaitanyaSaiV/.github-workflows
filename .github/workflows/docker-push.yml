@@ -35,20 +35,27 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v1
 
       - name: Extract GitHub repo name
-        run: echo "REPO_NAME=$(basename $GITHUB_REPOSITORY)" >> $GITHUB_ENV
+        run: echo "REPO_NAME=${{ inputs.ECR_REPOSITORY_NAME }}" >> $GITHUB_ENV
+
+      - name: Create ECR repository
+        id: create-ecr
+        run: |
+          aws ecr create-repository --repository-name "${{ inputs.ECR_REPOSITORY_NAME }}" --region "${{ secrets.AWS_REGION }}"
+          echo "::set-output name=repository_name::${{ inputs.ECR_REPOSITORY_NAME }}"
+        continue-on-error: true
 
       - name: Build Docker image
         run: |
-          docker build -t ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.ECR_REPOSITORY_NAME }}:${{ github.sha }} .
+          docker build -t "${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.ECR_REPOSITORY_NAME }}:${{ github.sha }}" .
 
       - name: Tag and Push to Amazon ECR
         run: |
-          docker tag ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.ECR_REPOSITORY_NAME }}:${{ github.sha }} ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.ECR_REPOSITORY_NAME }}:latest
-          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.ECR_REPOSITORY_NAME }}:${{ github.sha }}
-          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.ECR_REPOSITORY_NAME }}:latest
+          docker tag "${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.ECR_REPOSITORY_NAME }}:${{ github.sha }}" "${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.ECR_REPOSITORY_NAME }}:latest"
+          docker push "${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.ECR_REPOSITORY_NAME }}:${{ github.sha }}"
+          docker push "${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.ECR_REPOSITORY_NAME }}:latest"
 
       - name: Tag and Push Git Tag (if applicable)
         if: github.ref_name != 'main' && startsWith(github.ref_name, 'v')
         run: |
-          docker tag ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.ECR_REPOSITORY_NAME }}:${{ github.sha }} ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.ECR_REPOSITORY_NAME }}:${{ github.ref_name }}
-          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.ECR_REPOSITORY_NAME }}:${{ github.ref_name }}
+          docker tag "${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.ECR_REPOSITORY_NAME }}:${{ github.sha }}" "${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.ECR_REPOSITORY_NAME }}:${{ github.ref_name }}"
+          docker push "${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ inputs.ECR_REPOSITORY_NAME }}:${{ github.ref_name }}"
